@@ -33,14 +33,6 @@ const basicAuth = function (req, res, next) {
 }
 
 router.use(basicAuth)
-
-router.get('/', async function(req, res){
-    console.log("[/api] Hello world tapi di get")
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
-    return;
-})
-
 router.use("/v1", c_v1)
 
 module.exports = router
