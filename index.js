@@ -2,13 +2,19 @@ const express = require('express')
 const app = express()
 const path = require('path')
 const session = require("express-session")
-const c_main = require('./app/controllers/controller_main')
 const configuration = require("./app/modules/configuration")
 const app_config = require('./app/config/app.json')
+const dotenv = require('dotenv')
+const jwt = require('jsonwebtoken')
+const c_main = require('./app/controllers/controller_main')
 // const redis = require("redis")
 // const redis_config = require('./app/config/redis.json')
+
 // Enable proxy for get secure https
 app.enable("trust proxy")
+
+// Set up Global configuration access
+dotenv.config();
 
 app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit:50000 }))
 app.use(express.json({limit: '50mb'}))
