@@ -29,6 +29,9 @@ module.exports = {
                 case 404:
                     message = "Not Found"
                     break;
+                case 409:
+                    message = "Duplicate"
+                    break;
                 case 500:
                     message = "Internal Server Error"
                     break;
