@@ -217,15 +217,106 @@ router.post('/change_password', async function(req, res){
 router.post('/get_profile', async function(req, res){
     console.log("[/api/v1/user/get_profile] Get Profile")
     res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
-    return;
+
+    try{
+        var username = req.body.username
+
+        // get user data profile
+        var [result_get_user_data, error] = await model_user.getUserData({
+            username : username
+        })
+        if(error){
+            throw error
+        }
+        if(result_get_user_data.length == 0){
+            return res.status(404).send(
+                rm.build_response(404, "Not found", {
+                    detail : "Username not found!"
+                })
+            )
+        }
+        res.status(200).send(
+            rm.build_response(200, "Success", 
+                {
+                    detail : "User is registered!", 
+                    userdata : result_get_user_data[0],
+                }
+            )
+        )
+        return
+    }catch(error){
+        console.log(error)
+        return res.status(500).send(
+            rm.build_response(500,"Internal Server Error")
+        )
+    }
 })
 
 router.post('/update_profile', async function(req, res){
     console.log("[/api/v1/user/update_profile] Update Profile")
     res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
-    return;
+    
+    try{
+        var firstName = req.body.firstName
+        var lastName = req.body.lastName
+        var username = req.body.username
+        var email = req.body.email
+        var phoneNumber = req.body.phoneNumber
+        var profilePicture = req.body.profilePicture
+        var address = req.body.address
+
+        if(!username){
+            return res.status(400).send(
+                rm.build_response(400, "Bad Request", {
+                    detail : "Please fill the username fields"
+                })
+            )
+        }
+
+        // check if username is registered
+        var [result_search_user, error] = await model_user.checkUser({
+            username : username
+        })
+        if(error){
+            throw error
+        } 
+        if (result_search_user.length == 0){
+            return res.status(404).send(
+                rm.build_response(404, "Not found", {
+                    detail : "Username not found!"
+                })
+            )
+        }
+
+        // update user data
+        var [result_update_user_data, error] = await model_user.updateUserData({
+            firstName : firstName, 
+            lastName : lastName, 
+            username : username, 
+            email : email, 
+            phoneNumber : phoneNumber, 
+            profilePicture : profilePicture, 
+            address : address,
+        })
+        if(error){
+            throw error
+        }
+        if(result_update_user_data){
+            res.status(200).send(
+                rm.build_response(200, "Success", 
+                    {
+                        detail : "User data is updated!"
+                    }
+                )
+            )
+        }
+
+    }catch(error){
+        console.log(error)
+        return res.status(500).send(
+            rm.build_response(500,"Internal Server Error")
+        )
+    }
 })
 
 module.exports = router
