@@ -5,6 +5,7 @@ const router = express.Router()
 const jwt_token = require('../../../modules/jwt_token')
 const rm = require('../../../modules/response_maker')
 const model_user = require('../../../models/model_user')
+const module_auth = require('../../../modules/module_auth')
 
 router.get('/', async function(req, res){
     console.log("[/api/v1/user] Bisa di akses!")
@@ -53,48 +54,47 @@ router.post('/login', async function(req, res){
     console.log("[/api/v1/user/login] Login")
     res.setHeader('Content-Type', 'application/json')
     
-    var username = req.body.username
-    var password = req.body.password
-    
-    // check if username is registered
-    var [result_search_user, error] = await model_user.checkUser({
-        username : username
-    })
-    if(error){
-        throw error
-    } 
-    if (result_search_user.length == 0){
-        return res.status(404).send(
-            rm.build_response(404, "Not found", {
-                detail : "Username not found!"
+    try{
+        var username = req.body.username
+        var password = req.body.password
+        
+        // check if username is registered
+        var isRegistered = await module_auth.checkUserRegistered(username)
+        if(isRegistered.code != 200){
+            return res.status(isRegistered.code).send(isRegistered)
+        }
+        
+        // check password
+        var hash = isRegistered.data.detail.password
+        var checkPassword = bcrypt.compareSync(password, hash);
+        if(checkPassword){
+            var token = jwt_token.generate_token({
+                username : username,
             })
+            res.status(200).send(
+                rm.build_response(200, "Success", 
+                    {
+                        detail : "Token generated!",
+                        username : username, 
+                        token : token
+                    }
+                )
+            )
+        } else {
+            res.status(403).send(
+                rm.build_response(403, "Forbidden", {
+                    detail : "Wrong Password!"
+                })
+            )
+        }
+        return;
+    } catch (error){
+        console.log(error)
+        return res.status(500).send(
+            rm.build_response(500,"Internal Server Error")
         )
     }
 
-    // check password
-    var hash = result_search_user[0].password
-    var checkPassword = bcrypt.compareSync(password, hash);
-    if(checkPassword){
-        var token = jwt_token.generate_token({
-            username : username,
-        })
-        res.status(200).send(
-            rm.build_response(200, "Success", 
-                {
-                    detail : "Token generated!",
-                    username : username, 
-                    token : token
-                }
-            )
-        )
-    } else {
-        return res.status(403).send(
-            rm.build_response(403, "Forbidden", {
-                detail : "Wrong Password!"
-            })
-        )
-    }
-    return;
 })
 
 router.post('/register', async function(req, res){
@@ -210,8 +210,54 @@ router.post('/register', async function(req, res){
 router.post('/change_password', async function(req, res){
     console.log("[/api/v1/user/change_password] Change Password")
     res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
-    return;
+
+    try {
+        var username = req.body.username
+        var password
+        var oldPassword = req.body.oldPassword
+        var newPassword = req.body.newPassword
+
+        // check if username is registered
+        var isRegistered = await module_auth.checkUserRegistered(username)
+        if(isRegistered.code != 200){
+            return res.status(isRegistered.code).send(isRegistered)
+        }
+
+        password = isRegistered.data.detail.password
+        var checkPassword = bcrypt.compareSync(oldPassword, password);
+        if(checkPassword){
+            var saltRounds = 10;
+            var salt = bcrypt.genSaltSync(saltRounds);
+            var hash = bcrypt.hashSync(newPassword, salt);
+
+            var [result_update_user_data, error] = await model_user.updateUserData({
+                username : username,
+                password : hash
+            })
+
+            if(result_update_user_data){
+                res.status(200).send(
+                    rm.build_response(200, "Success", 
+                        {
+                            detail : "Password successfully changed!"
+                        }
+                    )
+                )
+            }
+        } else {
+            res.status(403).send(
+                rm.build_response(403, "Forbidden", {
+                    detail : "Wrong Password!"
+                })
+            )
+        }
+        return
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send(
+            rm.build_response(500,"Internal Server Error")
+        )
+    }
 })
 
 router.post('/get_profile', async function(req, res){
@@ -274,18 +320,9 @@ router.post('/update_profile', async function(req, res){
         }
 
         // check if username is registered
-        var [result_search_user, error] = await model_user.checkUser({
-            username : username
-        })
-        if(error){
-            throw error
-        } 
-        if (result_search_user.length == 0){
-            return res.status(404).send(
-                rm.build_response(404, "Not found", {
-                    detail : "Username not found!"
-                })
-            )
+        var isRegistered = await module_auth.checkUserRegistered(username)
+        if(isRegistered.code != 200){
+            return res.status(isRegistered.code).send(isRegistered)
         }
 
         // update user data

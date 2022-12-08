@@ -96,6 +96,10 @@ module.exports = {
                 sql += "address = ?,"
                 userdata.push(data.address)
             }
+            if (data.password) {
+                sql += "password = ?,"
+                userdata.push(data.password)
+            }
             sql += "WHERE username = ? "
             
             sql = sql.replace(",WHERE", " WHERE")
