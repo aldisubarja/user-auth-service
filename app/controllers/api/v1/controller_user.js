@@ -14,8 +14,8 @@ router.get('/', async function(req, res){
     return;
 })
 
-router.post('/authorize', async function(req, res){
-    console.log("[/api/v1/user/authorize] Check role")
+router.post('/authenticate', async function(req, res){
+    console.log("[/api/v1/user/authenticate] Authenticate")
     res.setHeader('Content-Type', 'application/json')
 
     var token = req.body.token
@@ -43,10 +43,39 @@ router.post('/authorize', async function(req, res){
     return;
 })
 
-router.post('/authenticate', async function(req, res){
-    console.log("[/api/v1/user/authenticate] Authenticate")
+router.post('/authorize', async function(req, res){
+    console.log("[/api/v1/user/authorize] Check role")
     res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
+
+    try {
+        var username = req.body.username
+    
+        // check if username is registered
+        var isRegistered = await module_auth.checkUserRegistered(username)
+        if(isRegistered.code != 200){
+            return res.status(isRegistered.code).send(isRegistered)
+        } 
+        var[result_role, error] = await model_user.getUserData({
+            username : username
+        })
+        if(error){
+            throw error
+        }
+        if(result_role.length != 0){
+            return res.status(200).send(
+                rm.build_response("200", "Success", {
+                    detail : "Your role is " + result_role[0].role_name,
+                    username : username,
+                    role : result_role[0].role_name,
+                })
+            )
+        }
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send(
+            rm.build_response(500,"Internal Server Error")
+        )
+    }
     return;
 })
 
