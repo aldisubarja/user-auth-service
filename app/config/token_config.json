@@ -1,0 +1,6 @@
+{
+    "JWT_SECRET_KEY":"jwt_secret_key",
+    "JWT_SECRET_REFRESH_KEY":"jwt_secret_refresh_key",
+    "JWT_TOKEN_EXPIRED":"3h",
+    "JWT_REFRESH_TOKEN_EXPIRED":"7d"
+}
