@@ -8,3 +8,5 @@ Service for User Details and Authentication with JWT and OAuth Implementation.
 To do:
 
 1. Implement Docker [Not Finish Yet]
+
+Made by Aldi & Tiffany
