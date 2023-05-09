@@ -5,14 +5,8 @@ const router = express.Router()
 const jwt_token = require('../../../modules/jwt_token')
 const rm = require('../../../modules/response_maker')
 const model_user = require('../../../models/model_user')
-const module_auth = require('../../../modules/module_auth')
-
-router.get('/', async function(req, res){
-    console.log("[/api/v1/user] Bisa di akses!")
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).send(rm.build_response(200))
-    return;
-})
+const module_auth = require('../../../modules/module_auth');
+const config = require('../../../modules/configuration')
 
 router.post('/authenticate', async function(req, res){
     console.log("[/api/v1/user/authenticate] Authenticate")
@@ -27,9 +21,7 @@ router.post('/authenticate', async function(req, res){
         res.status(200).send(
             rm.build_response(200, "Success", 
                 {
-                    detail : "Token verified!",
-                    username : verify.data.username, 
-                    token : token
+                    detail : "Token verified!"
                 }
             )
         )
@@ -43,37 +35,35 @@ router.post('/authenticate', async function(req, res){
     return;
 })
 
-router.post('/authorize', async function(req, res){
-    console.log("[/api/v1/user/authorize] Check role")
+router.post('/refresh', async function(req, res){
+    console.log("[/api/v1/user/refresh] Refresh")
     res.setHeader('Content-Type', 'application/json')
 
-    try {
-        var username = req.body.username
+    var refresh_token = req.body.refresh_token
+    var verify = jwt_token.verify_refresh_token({
+        token : refresh_token,
+    })
     
-        // check if username is registered
-        var isRegistered = await module_auth.checkUserRegistered(username)
-        if(isRegistered.code != 200){
-            return res.status(isRegistered.code).send(isRegistered)
-        } 
-        var[result_role, error] = await model_user.getUserData({
-            username : username
-        })
-        if(error){
-            throw error
-        }
-        if(result_role.length != 0){
-            return res.status(200).send(
-                rm.build_response("200", "Success", {
-                    detail : "Your role is " + result_role[0].role_name,
-                    username : username,
-                    role : result_role[0].role_name,
-                })
+    if(verify){
+        console.log("VERIFYING DATA", verify)
+        delete verify.iat
+        delete verify.exp
+        var token = jwt_token.generate_token(verify)
+
+        res.status(200).send(
+            rm.build_response(200, "Success", 
+                {
+                    detail : "Token generated!",
+                    token : token,
+                    refresh_token : refresh_token, 
+                }
             )
-        }
-    } catch (error) {
-        console.log(error)
-        return res.status(500).send(
-            rm.build_response(500,"Internal Server Error")
+        )
+    } else {
+        res.status(401).send(
+            rm.build_response(401, "Unauthorized", {
+                detail : "Refresh token is not verified, please login again!"
+            })
         )
     }
     return;
@@ -92,20 +82,25 @@ router.post('/login', async function(req, res){
         if(isRegistered.code != 200){
             return res.status(isRegistered.code).send(isRegistered)
         }
-        
+
         // check password
         var hash = isRegistered.data.detail.password
+        var dataToken = {
+            "username": isRegistered.data.detail.username,
+            "email": isRegistered.data.detail.email,
+            "phone_number": isRegistered.data.detail.phone_number,
+        }
+        
         var checkPassword = bcrypt.compareSync(password, hash);
         if(checkPassword){
-            var token = jwt_token.generate_token({
-                username : username,
-            })
+            var token = jwt_token.generate_token(dataToken)
+            var refresh_token = jwt_token.generate_refresh_token(dataToken)
             res.status(200).send(
                 rm.build_response(200, "Success", 
                     {
                         detail : "Token generated!",
-                        username : username, 
-                        token : token
+                        token : token,
+                        refresh_token : refresh_token, 
                     }
                 )
             )
@@ -139,10 +134,9 @@ router.post('/register', async function(req, res){
         var phoneNumber = req.body.phoneNumber;
         var profilePicture = req.body.profilePicture;
         var address = req.body.address;
-        var role = req.body.role;
     
         // validate fields
-        if( !firstName || !lastName || !username || !password || !email || !phoneNumber || !address || !role ){
+        if( !firstName || !lastName || !username || !password || !email || !phoneNumber || !address){
             return res.status(400).send(
                 rm.build_response(400, "Bad Request", {
                     detail : "Please fill all the fields"
@@ -164,24 +158,6 @@ router.post('/register', async function(req, res){
             )
         }
 
-        // check role
-        var roleCode
-        var [result_check_role, error] = await model_user.checkRole({
-            role_name : role.toLowerCase()
-        })
-        if(error){
-            throw error
-        }
-        if(result_check_role.length == 0){
-            return res.status(400).send(
-                rm.build_response(400, "Bad Request", {
-                    detail : "Role is not valid"
-                })
-            )
-        } else {
-            roleCode = result_check_role[0].id
-        }
-
         // check if username is already used or not
         var [result_search_user, error] = await model_user.checkUser({
             username : username
@@ -198,7 +174,7 @@ router.post('/register', async function(req, res){
         }
     
         // hashing password
-        var saltRounds = 10;
+        var saltRounds = config["PS_SALT"];
         var salt = bcrypt.genSaltSync(saltRounds);
         var hash = bcrypt.hashSync(password, salt);
 
@@ -211,8 +187,7 @@ router.post('/register', async function(req, res){
             email : email, 
             phoneNumber : phoneNumber, 
             profilePicture : profilePicture, 
-            address : address,
-            roleId : roleCode
+            address : address
         })
         if(error){
             throw error
@@ -255,7 +230,7 @@ router.post('/change_password', async function(req, res){
         password = isRegistered.data.detail.password
         var checkPassword = bcrypt.compareSync(oldPassword, password);
         if(checkPassword){
-            var saltRounds = 10;
+            var saltRounds = config["PS_SALT"];
             var salt = bcrypt.genSaltSync(saltRounds);
             var hash = bcrypt.hashSync(newPassword, salt);
 
