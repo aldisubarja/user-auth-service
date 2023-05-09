@@ -2,13 +2,14 @@ const express = require('express')
 const router = express.Router()
 const c_v1 = require('./v1/controller_v1')
 const rm = require('../../modules/response_maker')
+const config = require('../../modules/configuration')
 
 const basicAuth = function (req, res, next) {
     res.setHeader('Content-Type', 'application/json')
     console.log("[/api] basic auth")
 
-    var username = "buatAPI"
-    var password = "asdfghjkl123"
+    var username = config["BASIC_USER"]
+    var password = config["BASIC_KEY"]
 
     // get basic auth from postman
     var base64auth = req.headers.authorization

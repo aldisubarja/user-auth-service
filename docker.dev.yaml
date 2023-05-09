@@ -1,0 +1,29 @@
+version: '3.7'
+
+services:
+  server:
+    build: "./"
+    image: "${IMAGE_NAME}:${IMAGE_VERSION}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "100m"
+    env_file:
+     - .env
+    ports:
+      - "[PORT]:3000"
+    restart: on-failure
+    environment:
+      TZ: "Asia/Jakarta"
+      APP_PORT: 3000 
+
+      DB_HOST: "[DB_HOST]" 
+      DB_PORT: "[DB_PORT]" 
+      DB_USER: "[DB_USER]" 
+      DB_PASS: "[DB_PASS]"
+      DATABASE: "[DATABASE]"
+      
+      REDIS_HOST: "[REDIS_HOST]" 
+      REDIS_PORT: "[REDIS_PORT]"
+      REDIS_PASS: "[REDIS_PASS]"

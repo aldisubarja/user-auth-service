@@ -5,10 +5,10 @@ module.exports = {
         // menambahkan user saat register
         try {
             await mysql.connectAsync()
-            var sql =  "INSERT INTO ms_user(first_name, last_name, username, password, email, phone_number, profile_picture, address, role_id) "
-                sql += "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            var sql =  "INSERT INTO ms_user(first_name, last_name, username, password, email, phone_number, profile_picture, address) "
+                sql += "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
 
-            var [result, cache] = await mysql.executeAsync(sql, [data.firstName, data.lastName, data.username, data.password, data.email, data.phoneNumber, data.profilePicture, data.address, data.roleId])
+            var [result, cache] = await mysql.executeAsync(sql, [data.firstName, data.lastName, data.username, data.password, data.email, data.phoneNumber, data.profilePicture, data.address])
             await mysql.endPool()
             return [result, null]
         } catch (error) {
@@ -33,28 +33,11 @@ module.exports = {
             return [null, error]
         }
     },
-    checkRole:async function (data) {
-        // query check ms_role
-        try {
-            await mysql.connectAsync()
-            var sql =  "SELECT * FROM ms_role "
-                sql += "WHERE role_name = ? "
-
-            var [result, cache] = await mysql.executeAsync(sql, [data.role_name])
-            await mysql.endPool()
-            return [result, null]
-        } catch (error) {
-            console.log(error)
-            await mysql.endPool()
-            return [null, error]
-        }
-    },
     getUserData :async function (data) {
         // query to get user data
         try {
             await mysql.connectAsync()
-            var sql =  "SELECT first_name, last_name, username, email, phone_number, profile_picture, address, ms_role.role_name FROM ms_user "
-                sql += "JOIN ms_role ON ms_user.role_id = ms_role.id "
+            var sql =  "SELECT first_name, last_name, username, email, phone_number, profile_picture, address FROM ms_user "
                 sql += "WHERE username = ? "
 
             var [result, cache] = await mysql.executeAsync(sql, [data.username])
